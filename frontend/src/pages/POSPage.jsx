@@ -4,14 +4,12 @@ import { api, imgUrl, peso } from '../utils/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Modal from '../components/ui/Modal.jsx';
 import Banner from '../components/ui/Banner.jsx';
+import '../assets/uicons-solid-rounded/css/uicons-solid-rounded.css';
 
-// ── Constants ─────────────────────────────────────────────────
-// How many categories appear as quick-access pills before the "More" button
 const MAX_QUICK_CATS = 6;
-// Ceiling for cash input: prevents float overflow / precision loss on huge numbers
+
 const MAX_CASH_INPUT = 9_999_999.99;
 
-// ── Product card in the grid ─────────────────────────────────
 function ProductCard({ product, onAdd }) {
   const isOut = product.stock <= 0;
   const isLow = !isOut && product.stock <= 10;
@@ -45,7 +43,6 @@ function ProductCard({ product, onAdd }) {
   );
 }
 
-// ── Single cart row ──────────────────────────────────────────
 function CartItem({ item, onQtyChange, onRemove }) {
   return (
     <div className="cart-item">
@@ -60,29 +57,67 @@ function CartItem({ item, onQtyChange, onRemove }) {
       </div>
       <div className="cart-item__right">
         <p className="cart-item__sub">{peso(item.subtotal)}</p>
-        <button className="cart-item__del" onClick={() => onRemove(item.product.id)}>✕</button>
+        <button className="cart-item__del" onClick={() => onRemove(item.product.id)}>
+          <i className="fi fi-sr-cross-small" />
+        </button>
       </div>
     </div>
   );
 }
 
-// ── Receipt modal ────────────────────────────────────────────
 function ReceiptModal({ transaction, onClose }) {
-  const [mode, setMode] = useState('normal'); // 'normal' | 'thermal'
+  const [mode, setMode] = useState('normal'); 
   const receiptRef = useRef(null);
 
   const handlePrint = () => {
-    document.body.classList.add('printing', `print-${mode}`);
-    window.print();
-    setTimeout(() => {
-      document.body.classList.remove('printing', `print-${mode}`);
-    }, 800);
+    const receiptEl = document.getElementById('receipt-print');
+    if (!receiptEl) return;
+
+    const receiptHTML = receiptEl.outerHTML;
+    const styles = Array.from(document.styleSheets)
+      .map(sheet => {
+        try {
+          return Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
+        } catch { return ''; }
+      })
+      .join('\n');
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument;
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8"/>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+      ${styles}
+      body { margin: 16px; background: white; }
+      ${mode === 'thermal' ? `
+        #receipt-print { max-width: 72mm; margin: 0; font-size: 9pt; }
+      ` : `
+        #receipt-print { max-width: 100%; font-size: 11pt; }
+      `}
+    </style>
+    </head>
+    <body>${receiptHTML}</body>
+    </html>`);
+    doc.close();
+
+    iframe.onload = () => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    };
   };
 
   const d = new Date(transaction.created_at);
 
   return (
-    <Modal open onClose={onClose} title="✅ Transaction Complete" size="md"
+    <Modal open onClose={onClose} title="Transaction Complete" size="md"
       footer={
         <div className="receipt-actions">
           <div className="receipt-mode-pick">
@@ -94,7 +129,9 @@ function ReceiptModal({ transaction, onClose }) {
           </div>
           <div style={{display:'flex',gap:8}}>
             <button className="btn btn-ghost" onClick={onClose}>Close</button>
-            <button className="btn btn-primary" onClick={handlePrint}>🖨️ Print</button>
+              <button className="btn btn-primary" onClick={handlePrint}>
+              <i className="fi fi-sr-print" /> Print
+            </button>
           </div>
         </div>
       }
@@ -130,14 +167,13 @@ function ReceiptModal({ transaction, onClose }) {
         </div>
 
         <div className="receipt__foot">
-          <p>Thank you! Come again! 🙏</p>
+          <p>Thank you! Come again!</p>
         </div>
       </div>
     </Modal>
   );
 }
 
-// ── Category Drawer ───────────────────────────────────────────
 function CategoryDrawer({ categories, selectedCats, onToggle, onClear, onClose, drawerSearch, setDrawerSearch }) {
 
   const visible = drawerSearch
@@ -150,7 +186,9 @@ function CategoryDrawer({ categories, selectedCats, onToggle, onClear, onClose, 
       <div className="cat-drawer__panel" role="dialog" aria-modal="true" aria-label="All Categories">
         <div className="cat-drawer__head">
           <h4>All Categories</h4>
-          <button className="cat-drawer__close" onClick={onClose} aria-label="Close drawer">✕</button>
+          <button className="cat-drawer__close" onClick={onClose} aria-label="Close drawer">
+            <i className="fi fi-sr-cross" />
+          </button>
         </div>
         <input
           className="input cat-drawer__search"
@@ -161,7 +199,7 @@ function CategoryDrawer({ categories, selectedCats, onToggle, onClear, onClose, 
         />
         {selectedCats.size > 0 && (
           <button className="cat-drawer__clear" onClick={onClear}>
-            ✕ Clear selection ({selectedCats.size})
+            <i className="fi fi-sr-cross-small" style={{ marginRight: 4 }} /> Clear selection ({selectedCats.size})
           </button>
         )}
         <div className="cat-drawer__list">
@@ -191,75 +229,38 @@ function CategoryDrawer({ categories, selectedCats, onToggle, onClear, onClose, 
   );
 }
 
-// ── [NEW] Confirm Order Modal ────────────────────────────────
-// Sits between the "Charge" button and the actual API call.
-// The cashier must explicitly click "Confirm & Charge" for the
-// transaction to fire — tapping "⚡ Charge" alone only opens this.
-//
-// Design decisions:
-//   - Reuses receipt__* CSS classes for the item list so no new
-//     stylesheet entries are needed.
-//   - The modal is intentionally kept OPEN (with buttons disabled)
-//     while the API call is in flight. Closing it first and then
-//     calling checkout() leaves a dead visual gap where nothing
-//     visible is happening, which is worse UX than a spinner.
-//   - onClose receives a no-op (not undefined) when processing is
-//     true. Passing () => {} keeps the prop callable inside the
-//     Modal internals without a runtime crash, while making the
-//     X button and backdrop clicks effectively do nothing.
-//
-// Props:
-//   cart       – cart items array (same shape as POSPage `cart`)
-//   total      – computed order total (Number)
-//   cashNum    – parsed cash-given value (Number)
-//   change     – computed change = cashNum - total (Number)
-//   processing – true while checkout() is awaiting the API
-//   onConfirm  – fires checkout() in the parent
-//   onCancel   – sets showConfirm(false) without touching the cart
-function ConfirmOrderModal({ cart, total, cashNum, change, processing, onConfirm, onCancel }) { // [NEW] pre-checkout summary modal — the only path that fires checkout()
+function ConfirmOrderModal({ cart, total, cashNum, change, processing, onConfirm, onCancel }) { 
 
-  // Sum of individual line quantities, e.g. "5 items" not "3 products"
   const itemCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
   return (
     <Modal
       open
-      // Block backdrop / X dismissal while the POST is in flight.
-      // A no-op is safer than undefined because Modal may call onClose
-      // internally (e.g. on Escape keydown) — undefined would throw.
       onClose={processing ? () => {} : onCancel}
       title="Confirm Transaction"
       size="sm"
       footer={
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-
-          {/* Back: dismisses without touching the cart so the cashier
-               can correct mistakes (wrong cash amount, missed item, etc.) */}
           <button
             className="btn btn-ghost"
             onClick={onCancel}
-            disabled={processing} // Cannot cancel mid-POST
+            disabled={processing}
           >
-            ← Back
+            Back
           </button>
-
-          {/* The sole button that triggers the real transaction.
-               Label switches to "Processing…" during the API call
-               so the cashier knows the system is working. */}
           <button
             className="btn btn-primary"
             onClick={onConfirm}
             disabled={processing}
           >
-            {processing ? 'Processing…' : '✅ Confirm & Charge'}
+            {processing ? 'Processing…' : (
+              <><i className="fi fi-sr-check" /> Confirm & Charge</>
+            )}
           </button>
         </div>
       }
     >
       <div className="confirm-order">
-
-        {/* Instructional line — makes it unambiguous that this is a
-             one-way, irreversible action (stock deducted, sale recorded) */}
         <p style={{
           fontSize: '0.85rem',
           color: 'var(--color-muted, #666)',
@@ -268,8 +269,6 @@ function ConfirmOrderModal({ cart, total, cashNum, change, processing, onConfirm
         }}>
           Review the order before confirming. Stock will be deducted and the sale recorded.
         </p>
-
-        {/* Item count badge — quick sanity check for the cashier */}
         <p style={{
           fontSize: '0.7rem',
           fontWeight: 700,
@@ -280,32 +279,18 @@ function ConfirmOrderModal({ cart, total, cashNum, change, processing, onConfirm
         }}>
           {itemCount} item{itemCount !== 1 ? 's' : ''}
         </p>
-
-        {/* Item list — reuses receipt__* classes directly.
-             Source data is cart[] (live state), not transaction.items
-             (which only exists after a successful POST). The field
-             names differ: item.product.name vs item.product_name, etc. */}
         <div className="receipt__items">
           {cart.map(item => (
             <div key={item.product.id} className="receipt__item">
-              {/* Product name column */}
               <span className="receipt__item-name">{item.product.name}</span>
-              {/* Qty × unit-price column */}
               <span className="receipt__item-qty">
                 {item.quantity} × {peso(item.product.price)}
               </span>
-              {/* Line subtotal — rightmost column */}
               <span className="receipt__item-total">{peso(item.subtotal)}</span>
             </div>
           ))}
         </div>
-
-        {/* Horizontal rule between items and financial summary */}
         <div className="receipt__divider" />
-
-        {/* Three-row financial summary: mirrors what the receipt will show.
-             Showing this here lets the cashier verify cash ÷ change before
-             committing, which is the whole point of this modal. */}
         <div className="receipt__summary">
           <div className="receipt__row">
             <span>Total</span>
@@ -313,7 +298,6 @@ function ConfirmOrderModal({ cart, total, cashNum, change, processing, onConfirm
           </div>
           <div className="receipt__row">
             <span>Cash Given</span>
-            {/* Not bold — secondary information, total + change are what matter */}
             <span>{peso(cashNum)}</span>
           </div>
           <div className="receipt__row receipt__row--change">
@@ -327,7 +311,6 @@ function ConfirmOrderModal({ cart, total, cashNum, change, processing, onConfirm
   );
 }
 
-// ── Main POS Page ────────────────────────────────────────────
 export default function POSPage() {
 
   const [products,   setProducts]   = useState([]);
@@ -349,27 +332,18 @@ export default function POSPage() {
   const [search,     setSearch]     = useState('');
   const [activeCat,  setActiveCat]  = useState('all');
 
-  // ── Category Drawer state ──────────────────────────────────
+
   const [drawerOpen,    setDrawerOpen]    = useState(false);
   const [drawerSearch,  setDrawerSearch]  = useState('');
   const [selectedCats,  setSelectedCats]  = useState(() => new Set());
-
   const [loading,    setLoading]    = useState(true);
   const [processing, setProcessing] = useState(false);
   const [receipt,    setReceipt]    = useState(null);
   const [banner,     setBanner]     = useState(null);
-
-  // ── [NEW] Confirm-order modal visibility ───────────────────
-  // false → hidden (default)
-  // true  → showing order summary, awaiting explicit cashier confirmation
-  // The actual checkout() call only fires from inside ConfirmOrderModal.
-  const [showConfirm, setShowConfirm] = useState(false); // [NEW] true = show confirm modal; false = hidden (default)
-
-  // ── Derived values ─────────────────────────────────────────
+  const [showConfirm, setShowConfirm] = useState(false);
   const total     = cart.reduce((s, i) => s + i.subtotal, 0);
   const cashNum   = parseFloat(cash) || 0;
   const change    = cashNum - total;
-  // canCharge gates both the Charge button AND the confirm modal's Confirm button
   const canCharge = cart.length > 0 && cashNum >= total && total > 0;
 
   const filtered = products.filter(p => {
@@ -382,7 +356,6 @@ export default function POSPage() {
     } else {
       matchC = activeCat === 'all' || String(p.category_id) === activeCat;
     }
-
     return matchQ && matchC;
   });
 
@@ -390,7 +363,6 @@ export default function POSPage() {
   const hasMore      = categories.length > MAX_QUICK_CATS;
   const drawerActive = selectedCats.size > 0;
 
-  // ── Data loading ───────────────────────────────────────────
   const loadData = useCallback(async () => {
     setLoading(true); setBanner(null);
     try {
@@ -425,7 +397,6 @@ export default function POSPage() {
     }
   }, [cash]);
 
-  // ── Cart actions ───────────────────────────────────────────
   const addToCart = (product) => {
     if (product.stock <= 0) { toast.error('Out of stock'); return; }
     const existing = cart.find(i => i.product.id === product.id);
@@ -460,7 +431,6 @@ export default function POSPage() {
 
   const clearCart = () => { setCart([]); setCash(''); setBanner(null); };
 
-  // ── Category filter handlers ────────────────────────────────
   const handleQuickPill = (catId) => {
     setActiveCat(catId);
     setSelectedCats(new Set());
@@ -477,7 +447,6 @@ export default function POSPage() {
 
   const clearDrawerCats = () => setSelectedCats(new Set());
 
-  // ── Cash input handler ──────────────────────────────────────
   const handleCashChange = (e) => {
     const raw = e.target.value;
     if (raw === '') { setCash(''); return; }
@@ -489,21 +458,7 @@ export default function POSPage() {
     setCash(raw);
   };
 
-  // ── Checkout ───────────────────────────────────────────────
-  // [CHANGED] This function is no longer called by the Charge button directly.
-  // The Charge button now calls setShowConfirm(true), and checkout() is only
-  // invoked when the cashier clicks "Confirm & Charge" inside ConfirmOrderModal.
-  //
-  // [CHANGED] setShowConfirm(false) is called in BOTH the try and catch branches.
-  //   - try  → closes confirm modal before opening the receipt modal.
-  //             React 18 batches these two setStates so there is no intermediate
-  //             render with both modals open simultaneously.
-  //   - catch → closes confirm modal so the error banner on the main POS page
-  //             is visible. The cart is preserved so the cashier can retry
-  //             without rebuilding the order from scratch.
   const checkout = async () => {
-    // Defensive guard: canCharge was verified before the confirm modal opened,
-    // but this protects against any unexpected call path (e.g. keyboard shortcut).
     if (!canCharge || processing) return;
 
     setProcessing(true);
@@ -524,19 +479,14 @@ export default function POSPage() {
         change_amount: change,
       });
 
-      // Close confirm modal first, then open receipt modal.
-      // Ordering matters: if receipt opened while confirm was still mounted,
-      // two modals would render simultaneously (stacked backdrops).
-      setShowConfirm(false);  // [CHANGED] close confirm modal before opening receipt; prevents two modals stacking
+      setShowConfirm(false);
       setReceipt(res.data);
       clearCart();
       loadData();
       toast.success('Transaction saved!');
 
     } catch (err) {
-      // Close confirm modal so the error banner below the product grid
-      // is actually visible to the cashier. Cart remains intact.
-      setShowConfirm(false);  // [CHANGED] close confirm modal so the error banner on the main page is visible
+      setShowConfirm(false);  
       setBanner({ type: 'error', msg: err.message });
 
     } finally {
@@ -544,20 +494,18 @@ export default function POSPage() {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────
+
   return (
     <div className="pos-layout">
-
-      {/* ── LEFT: Product Browser ── */}
       <div className="pos-left">
         {banner && (
           <Banner type={banner.type} message={banner.msg} onClose={() => setBanner(null)} />
         )}
-
+        
         <div className="pos-toolbar">
           <input
             className="input pos-search"
-            placeholder="🔍 Search by name or SKU…"
+            placeholder="Search by name or SKU…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -602,8 +550,8 @@ export default function POSPage() {
         )}
       </div>
 
-      {/* ── RIGHT: Cart ── */}
       <div className="pos-right">
+
         <div className="cart-head">
           <h3>Current Order</h3>
           {cart.length > 0 && (
@@ -614,7 +562,9 @@ export default function POSPage() {
         <div className="cart-body">
           {cart.length === 0 ? (
             <div className="cart-empty">
-              <div className="cart-empty-icon">🛒</div>
+              <div className="cart-empty-icon">
+                <i className="fi fi-sr-shopping-cart" style={{ fontSize: 42, color: 'var(--border)' }} />
+              </div>
               <p>Tap a product to add it to the order</p>
             </div>
           ) : (
@@ -630,7 +580,7 @@ export default function POSPage() {
         </div>
 
         <div className="cart-foot">
-          {/* Total row */}
+
           <div className="cart-total-row">
             <span className="cart-items-count">{cart.reduce((s, i) => s + i.quantity, 0)} item(s)</span>
             <div>
@@ -639,7 +589,6 @@ export default function POSPage() {
             </div>
           </div>
 
-          {/* Cash input */}
           <div className="form-group">
             <label className="form-label">Cash Given (₱)</label>
             <input
@@ -655,7 +604,10 @@ export default function POSPage() {
           </div>
 
           {cashNum > 0 && cashNum < total && (
-            <p className="cash-short">⚠ Short by {peso(total - cashNum)}</p>
+           <p className="cash-short">
+            <i className="fi fi-sr-triangle-warning" style={{ marginRight: 4 }} />
+              Short by {peso(total - cashNum)}
+            </p>
           )}
 
           {change >= 0 && cashNum > 0 && (
@@ -665,14 +617,9 @@ export default function POSPage() {
             </div>
           )}
 
-          {/* [CHANGED] onClick now opens the confirmation modal instead of
-               firing checkout() directly. The API call only happens when
-               the cashier explicitly clicks "Confirm & Charge" in that modal.
-               The disabled condition is unchanged — canCharge must be true
-               and no call can already be in flight.                          */}
           <button
             className="btn-charge"
-            onClick={() => setShowConfirm(true)}  // [CHANGED] was: onClick={checkout} — now opens confirm modal; checkout() only fires after explicit confirmation
+            onClick={() => setShowConfirm(true)}  
             disabled={!canCharge || processing}
           >
             <i className="fi fi-sr-bolt"></i>
@@ -681,18 +628,11 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* Receipt modal — opens AFTER a successful transaction */}
       {receipt && (
         <ReceiptModal transaction={receipt} onClose={() => setReceipt(null)} />
       )}
 
-      {/* [NEW] Confirm-order modal — the only path to checkout().
-           Rendered after ReceiptModal in the DOM so it sits above it in
-           stacking order (though in the normal happy path only one of the
-           two is ever open at the same time).
-           onCancel leaves the cart and cash untouched so the cashier can
-           fix a mistake and re-open the modal without starting over.       */}
-      {showConfirm && (  // [NEW] mounts confirm modal only when cashier taps Charge; unmounted after confirm or cancel
+      {showConfirm && ( 
         <ConfirmOrderModal
           cart={cart}
           total={total}
@@ -704,7 +644,6 @@ export default function POSPage() {
         />
       )}
 
-      {/* Category drawer — outside pos-left to avoid overflow:hidden clipping */}
       {drawerOpen && (
         <CategoryDrawer
           categories={categories}

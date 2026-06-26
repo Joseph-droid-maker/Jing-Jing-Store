@@ -2,26 +2,54 @@ import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api, peso, today, firstOfMonth } from '../utils/api.js';
 import Banner from '../components/ui/Banner.jsx';
+import '../assets/uicons-solid-rounded/css/uicons-solid-rounded.css';
 
 // ── Export helpers ────────────────────────────────────────────
-async function exportPDF(title, headers, rows) {
+async function exportPDF(title, headers, rows, summaryRows = []) {
   const { default: jsPDF } = await import('jspdf');
   const { default: autoTable } = await import('jspdf-autotable');
   const doc = new jsPDF();
+  const now = new Date();
+
+  // Brand header bar — solid navy, full page width
+  doc.setFillColor(31, 53, 83);
+  doc.rect(0, 0, 210, 28, 'F');
+
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('Jing-Jing Store — ' + title, 14, 22);
-  doc.setFontSize(10);
+  doc.text('JING-JING STORE', 14, 12);
+
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Generated: ' + new Date().toLocaleString('en-PH'), 14, 30);
+  doc.text(title.replace(/_/g, ' ').toUpperCase(), 14, 20);
+
+  // Metadata block below header
+  doc.setTextColor(100, 116, 139);
+  doc.setFontSize(9);
+  doc.text(`Generated: ${now.toLocaleString('en-PH')}`, 14, 36);
+
   autoTable(doc, {
-    startY: 36,
+    startY: 44,
     head: [headers],
     body: rows,
-    theme: 'striped',
-    headStyles: { fillColor: [201, 136, 12], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [253, 246, 224] },
+    foot: summaryRows.length ? [summaryRows] : undefined,
+    theme: 'grid',
+    headStyles: { fillColor: [31, 53, 83], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    bodyStyles: { fontSize: 9, textColor: [15, 23, 42] },
+    alternateRowStyles: { fillColor: [238, 242, 247] },
+    footStyles: { fillColor: [31, 53, 83], textColor: [217, 190, 99], fontStyle: 'bold' },
+    didDrawPage: (data) => {
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(
+        `Page ${data.pageNumber} of ${pageCount}  ·  Jing-Jing Store  ·  Confidential`,
+        14, doc.internal.pageSize.height - 10
+      );
+    },
   });
+
   doc.save(title.replace(/\s+/g, '_') + '.pdf');
   toast.success('PDF downloaded!');
 }
@@ -59,7 +87,13 @@ function DailyTab() {
   const doExport = (type) => {
     const headers = ['Date', 'Transactions', 'Items Sold', 'Total Sales'];
     const rows = (data?.daily || []).map(r => [r.date, r.transaction_count, r.items_sold, peso(r.total_sales)]);
-    type === 'pdf' ? exportPDF('Daily_Sales', headers, rows) : exportExcel('Daily_Sales', headers, rows);
+    const summary = [
+      'TOTAL',
+      data?.summary?.total_transactions || 0,
+      (data?.daily || []).reduce((s, r) => s + r.items_sold, 0),
+      peso(data?.summary?.total_revenue || 0),
+    ];
+    type === 'pdf' ? exportPDF('Daily_Sales', headers, rows, summary) : exportExcel('Daily_Sales', headers, rows);
   };
 
   return (
@@ -89,6 +123,7 @@ function DailyTab() {
               <div className="stat-card__label">Avg Transaction</div>
             </div>
           </div>
+
           <div className="export-bar">
             <button className="btn btn-ghost btn-sm" onClick={() => doExport('pdf')}><i className="fi fi-sr-file-pdf" /> PDF</button>
             <button className="btn btn-ghost btn-sm" onClick={() => doExport('excel')}><i className="fi fi-sr-file-excel" /> Excel</button>
@@ -122,6 +157,12 @@ function MonthlyTab() {
   const [loading, setLoading] = useState(false);
   const [banner, setBanner] = useState(null);
 
+  const totals = (data || []).reduce((acc, r) => ({
+    transactions: acc.transactions + r.transaction_count,
+    itemsSold:    acc.itemsSold    + r.items_sold,
+    revenue:      acc.revenue      + parseFloat(r.total_sales),
+  }), { transactions: 0, itemsSold: 0, revenue: 0 });
+
   const load = async () => {
     setLoading(true); setBanner(null);
     try {
@@ -137,7 +178,8 @@ function MonthlyTab() {
   const doExport = (type) => {
     const h = ['Month', 'Transactions', 'Items Sold', 'Total Sales'];
     const r = (data || []).map(d => [d.month_label, d.transaction_count, d.items_sold, peso(d.total_sales)]);
-    type === 'pdf' ? exportPDF('Monthly_Sales', h, r) : exportExcel('Monthly_Sales', h, r);
+    const summary = ['TOTAL', totals.transactions, totals.itemsSold, peso(totals.revenue)];
+    type === 'pdf' ? exportPDF('Monthly_Sales', h, r, summary) : exportExcel('Monthly_Sales', h, r);
   };
 
   return (
@@ -149,9 +191,23 @@ function MonthlyTab() {
       {loading && <div className="loading-center"><div className="spinner" /></div>}
       {data && (
         <>
+          <div className="stats-row">
+            <div className="stat-card">
+              <div className="stat-card__val">{totals.transactions}</div>
+              <div className="stat-card__label">Transactions (12mo)</div>
+            </div>
+            <div className="stat-card stat-card--primary">
+              <div className="stat-card__val">{peso(totals.revenue)}</div>
+              <div className="stat-card__label">Total Revenue</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-card__val">{totals.itemsSold}</div>
+              <div className="stat-card__label">Items Sold</div>
+            </div>
+          </div>
           <div className="export-bar">
-            <button className="btn btn-ghost btn-sm" onClick={() => doExport('pdf')}>⬇️ PDF</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => doExport('excel')}>⬇️ Excel</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => doExport('pdf')}><i className="fi fi-sr-file-pdf" /> PDF</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => doExport('excel')}><i className="fi fi-sr-file-excel" /> Excel</button>
           </div>
           <div className="table-wrap">
             <table className="table">
@@ -184,7 +240,7 @@ function BestSellersTab() {
   const [loading,  setLoading]  = useState(false);
   const [banner,   setBanner]   = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true); setBanner(null);
     try {
       const q = new URLSearchParams({ date_from: dateFrom, date_to: dateTo, limit: 20 });
@@ -195,19 +251,22 @@ function BestSellersTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo]);
 
-  const doExport = (type) => {
-    const h = ['#', 'Product', 'Qty Sold', 'Revenue', 'Total Cost', 'Profit'];
-    const r = (data || []).map((d, i) => [
-      i+1,
-      d.product_name, 
-      d.total_qty, 
-      peso(d.total_revenue),  
-      d.cost_price > 0 ? peso(d.total_cost) : '—',
-      d.cost_price > 0 ? peso(d.profit) : 'No cost set',
-    ]);
-    type === 'pdf' ? exportPDF('Best_Sellers', h, r) : exportExcel('Best_Sellers', h, r);
+const doExport = (type) => {
+  const h = ['#', 'Product', 'Qty Sold', 'Revenue', 'Total Cost', 'Profit'];
+  const r = (data || []).map((d, i) => [
+    i+1, d.product_name, d.total_qty, peso(d.total_revenue),
+    d.cost_price > 0 ? peso(d.total_cost) : '—',
+    d.cost_price > 0 ? peso(d.profit) : 'No cost set',
+  ]);
+    const summary = [
+      '', 'TOTAL',
+      (data || []).reduce((s, d) => s + Number(d.total_qty), 0),
+      peso((data || []).reduce((s, d) => s + Number(d.total_revenue), 0)),
+      '', '',
+    ];
+    type === 'pdf' ? exportPDF('Best_Sellers', h, r, summary) : exportExcel('Best_Sellers', h, r);
   };
 
   return (
@@ -224,8 +283,8 @@ function BestSellersTab() {
       {data && (
         <>
           <div className="export-bar">
-            <button className="btn btn-ghost btn-sm" onClick={() => doExport('pdf')}>⬇️ PDF</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => doExport('excel')}>⬇️ Excel</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => doExport('pdf')}><i className="fi fi-sr-file-pdf" /> PDF</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => doExport('excel')}><i className="fi fi-sr-file-excel" /> Excel</button>
           </div>
           <div className="table-wrap">
             <table className="table">
@@ -259,7 +318,7 @@ function BestSellersTab() {
                       </td>
                       <td style={{textAlign:'right'}}>
                         { hasProfit 
-                          ? <span className="price-mono" style={{color: profit >= 0 ? 'var(--green)' : 'var(--red)'}}>
+                          ? <span className="price-mono" style={{color: profit >= 0 ? 'var(--ok)' : 'var(--err)'}}>
                               {peso(profit)}
                             </span> 
                           : <span className="text-muted" style={{color: 'var(--text3)'}}> No cost set </span>
@@ -317,20 +376,24 @@ function LowStockTab() {
       {data && (
         <>
           {data.count > 0 && (
-            <div className="low-stock-alert">
-              ⚠ <strong>{data.count}</strong> product{data.count !== 1 ? 's' : ''} at or below {data.threshold} units
-            </div>
+            <Banner
+              type="warn"
+              message={`${data.count} product${data.count !== 1 ? 's' : ''} at or below ${data.threshold} units.`}
+            />
           )}
           <div className="export-bar">
-            <button className="btn btn-ghost btn-sm" onClick={() => doExport('pdf')}>⬇️ PDF</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => doExport('excel')}>⬇️ Excel</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => doExport('pdf')}><i className="fi fi-sr-file-pdf" /> PDF</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => doExport('excel')}><i className="fi fi-sr-file-excel" /> Excel</button>
           </div>
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Product</th><th>SKU</th><th>Category</th><th style={{textAlign:'right'}}>Stock</th><th style={{textAlign:'right'}}>Price</th></tr></thead>
               <tbody>
                 {data.products.length === 0
-                  ? <tr><td colSpan={5} className="table-empty">✅ All products are sufficiently stocked.</td></tr>
+                  ? <tr><td colSpan={5} className="table-empty">
+                      <i className="fi fi-sr-shield-check" style={{ marginRight: 6, color: 'var(--ok)' }} />
+                      All products are sufficiently stocked.
+                    </td></tr>
                   : data.products.map(p => (
                     <tr key={p.id}>
                       <td><strong>{p.name}</strong></td>
@@ -377,7 +440,7 @@ export default function ReportsPage() {
           className={`tab-btn ${active === t.id ? 'tab-btn--active' : ''}`}
           onClick={() => setActive(t.id)}
         >
-          <i className={`tab-icon ${t.icon}`}></i>
+          <i className={t.icon} style={{ marginRight: 6 }} />
           <span>{t.label}</span>
         </button>
       ))}

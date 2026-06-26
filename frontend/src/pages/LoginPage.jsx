@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import logo from '../assets/Logo.png';
+import '../assets/uicons-solid-rounded/css/uicons-solid-rounded.css';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -63,7 +64,8 @@ export default function LoginPage() {
           {/* Server-level error banner */}
           {serverError && (
             <div className="login-error-banner">
-              ⚠ {serverError}
+              <i className="fi fi-sr-triangle-warning" style={{ marginRight: 8 }} />
+              {serverError}
             </div>
           )}
 

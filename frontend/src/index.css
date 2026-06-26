@@ -806,12 +806,28 @@ select.input {
    reads differently from every other action at a glance.
    ────────────────────────────────────────────────────────── */
 .btn-charge {
-  width: 100%; padding: 15px; border: none; border-radius: var(--r-l);
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: var(--r-l);
+
   background: linear-gradient(135deg, var(--gold) 0%, var(--gold-h) 100%);
-  color: var(--primary-h);          /* Dark navy text on gold: high contrast */
-  font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 700;
-  cursor: pointer; transition: all var(--t); letter-spacing: .01em;
+  color: var(--primary-h);
+
+  font-family: 'Sora', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+
+  cursor: pointer;
+  transition: all var(--t);
+  letter-spacing: .01em;
+
+  display: flex;            
+  justify-content: center;  
+  align-items: center;      
+  gap: 8px;                 
 }
+
 .btn-charge:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--gold-h) 0%, #B8902F 100%);
   box-shadow: 0 4px 18px rgba(217, 190, 99, .45);
@@ -1045,3 +1061,4 @@ select.input {
   .sidebar__close    { display: none; }
   .sidebar-overlay   { display: none !important; }
 }
+

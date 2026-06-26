@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { api, peso, today, firstOfMonth } from '../utils/api.js';
 import Modal from '../components/ui/Modal.jsx';
 import Banner from '../components/ui/Banner.jsx';
+import '../assets/uicons-solid-rounded/css/uicons-solid-rounded.css';
+
 
 const LIMIT = 20;
 
@@ -20,7 +22,7 @@ function TxnModal({ txn, onClose }) {
   const d = new Date(txn.created_at);
 
   return (
-    <Modal open onClose={onClose} title={`🧾 ${txn.transaction_code}`} size="md">
+      <Modal open onClose={onClose} title={`${txn.transaction_code}`} size="md">
       {loading ? (
         <div className="loading-center"><div className="spinner" /></div>
       ) : (
@@ -189,7 +191,7 @@ export default function SalesPage() {
                         <strong className="price-mono">{peso(t.total)}</strong>
                       </td>
                       <td>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setSelected(t)}>View →</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setSelected(t)}>View</button>
                       </td>
                     </tr>
                   );
@@ -201,12 +203,16 @@ export default function SalesPage() {
           {totalPages > 1 && (
             <div className="pagination">
               <button className="btn btn-ghost btn-sm" disabled={page === 0}
-                onClick={() => setPage(p => p - 1)}>← Prev</button>
+                onClick={() => setPage(p => p - 1)}>
+                <i className="fi fi-sr-angle-left" /> Prev
+              </button>
               <span className="pagination__info">
                 Page {page + 1} of {totalPages} &nbsp;·&nbsp; {total} total
               </span>
               <button className="btn btn-ghost btn-sm" disabled={page + 1 >= totalPages}
-                onClick={() => setPage(p => p + 1)}>Next →</button>
+                onClick={() => setPage(p => p + 1)}>
+                Next <i className="fi fi-sr-angle-right" />
+              </button>
             </div>
           )}
         </>
