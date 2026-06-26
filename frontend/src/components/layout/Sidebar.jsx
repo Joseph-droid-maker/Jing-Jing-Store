@@ -13,8 +13,7 @@ const NAV = [
   { to: '/reports',  icon: 'fi fi-sr-chart-pie', label: 'Reports',  roles: ['admin'] },
   { to: '/users',    icon: 'fi fi-sr-users',      label: 'Users',    roles: ['admin'] },
 ];
-// open: boolean — controlled by Layout, drives the --open CSS class on mobile
-// onClose: function — called when user navigates or taps the close button
+
 export default function Sidebar({ open, onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -44,7 +43,7 @@ export default function Sidebar({ open, onClose }) {
             onClick={onClose}
             aria-label="Close navigation menu"
           >
-            ✕
+            <i className="fi fi-sr-cross"></i>
           </button>
         </div>
 

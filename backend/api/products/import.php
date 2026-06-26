@@ -18,14 +18,13 @@ if (!$handle) respondError('Could not read file.', 500);
 
 $db = getDB();
 
-// Pre-load categories for name→id matching
 $catResult  = $db->query("SELECT id, LOWER(TRIM(name)) AS name FROM categories");
 $categories = [];
 while ($row = $catResult->fetch_assoc()) {
     $categories[$row['name']] = $row['id'];
 }
 
-// ── Flexible column name mapping ──────────────────────────────
+
 $col_aliases = [
     'name'        => ['item name', 'name', 'product name', 'item', 'product'],
     'description' => ['description/size', 'description', 'size', 'desc', 'variant'],
@@ -56,7 +55,7 @@ $inserted = 0; $updated = 0; $skipped = 0; $errors = []; $rowNum = 1;
 while (($row = fgetcsv($handle)) !== false) {
     $rowNum++;
     $name = trim($row[$col['name']] ?? '');
-    if (!$name) { $skipped++; continue; } // Skip blank rows
+    if (!$name) { $skipped++; continue; } 
 
     $price     = floatval(str_replace(['₱', ',', ' '], '', $row[$col['price']]     ?? 0));
 

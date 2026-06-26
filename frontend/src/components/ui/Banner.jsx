@@ -1,5 +1,3 @@
-// Banner: shown at page level for server/network errors or warnings.
-// Use Toast for transient action feedback; Banner for persistent issues.
 export default function Banner({ type = 'error', message, onClose }) {
   if (!message) return null;
 

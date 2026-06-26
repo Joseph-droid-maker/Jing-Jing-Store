@@ -6,18 +6,11 @@ require_once __DIR__ . '/../../middleware/auth.php';
 requireAdmin();
 $db = getDB();
 
-// FIX #3: Capture one shared cutoff anchored to midnight.
-// Original called DATE_SUB(NOW()) inside each query separately —
-// two different timestamps, and a mid-day anchor that silently
-// excludes early-day transactions on the boundary month.
-// 'first day of this month' -11 months = exactly 12 calendar months.
 $cutoff = (new DateTime('first day of this month'))
     ->modify('-11 months')
     ->format('Y-m-d');
 
 // ── Query 1: Per-month sales ─────────────────────────────────
-// Switched from ->query() to prepared statement so $cutoff binds
-// cleanly without string interpolation.
 $stmt = $db->prepare(
     "SELECT DATE_FORMAT(created_at,'%Y-%m') AS month,
             DATE_FORMAT(created_at,'%M %Y') AS month_label,
@@ -40,11 +33,6 @@ $stmt2 = $db->prepare(
             COALESCE(SUM(amount), 0)                                        AS total_expenses,
             COALESCE(SUM(CASE WHEN category = 'Food'
                               THEN amount END), 0)                          AS food_expenses,
-            -- FIX #1: OR category IS NULL explicitly routes NULL-category
-            -- rows into other_expenses. Without it, NULL != 'Food' evaluates
-            -- to NULL (not TRUE) in SQL's three-valued logic — those rows
-            -- vanish from both buckets but still count in total_expenses,
-            -- breaking the invariant: food + other = total.
             COALESCE(SUM(CASE WHEN category != 'Food'
                               OR   category IS NULL
                               THEN amount END), 0)                          AS other_expenses
@@ -60,21 +48,14 @@ $stmt2->close();
 
 $db->close();
 
-// Index both result sets by month key for O(1) lookup
 $txByMonth  = [];
 foreach ($txRows as $row)     { $txByMonth[$row['month']]  = $row; }
 
 $expByMonth = [];
 foreach ($expenseRows as $row) { $expByMonth[$row['month']] = $row; }
 
-// FIX #2: Build output from the month spine, not from transaction rows.
-// Original seeded the loop from $monthlyRows (transactions) and enriched
-// with expense data — months with expenses but zero sales were silently
-// absent. Generating the authoritative date spine first means every month
-// in the 12-month window appears regardless of whether sales, expenses,
-// or neither exist for that month.
 $monthlyRows = [];
-$dt = new DateTime('first day of this month'); // newest first, walk back
+$dt = new DateTime('first day of this month'); 
 
 for ($i = 0; $i < 12; $i++) {
     $key   = $dt->format('Y-m');
@@ -83,8 +64,6 @@ for ($i = 0; $i < 12; $i++) {
     $tx  = $txByMonth[$key]  ?? null;
     $exp = $expByMonth[$key] ?? null;
 
-    // Explicit float/int casts: MySQLi returns all values as strings;
-    // casting early prevents silent string concatenation in arithmetic.
     $totalSales    = (float)($tx['total_sales']    ?? 0);
     $totalExpenses = (float)($exp['total_expenses'] ?? 0);
 

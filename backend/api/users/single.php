@@ -36,13 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
-    // Guard 1: Prevent admins from deactivating their own account
+  
     if ((int)$id === (int)$currentUser['id']) {
         $db->close();
         respondError('You cannot deactivate your own account.', 400);
     }
 
-    // Guard 2: Prevent deactivating the last remaining active admin
     $adminCheck = $db->prepare(
         'SELECT COUNT(*) AS cnt FROM users
          WHERE role = "admin" AND is_active = 1 AND id != ?'
@@ -70,8 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     respond(true, null, 'User deactivated.');
 }
 
-// ── PATCH ── Reactivate: set is_active = 1
-// No guard needed — reactivating a user can never reduce admin count
+
 if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
 
     $stmt = $db->prepare('UPDATE users SET is_active = 1 WHERE id = ?');

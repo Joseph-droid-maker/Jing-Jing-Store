@@ -9,11 +9,9 @@ $db = getDB();
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     requireAdmin();
 
-    // Optional date range; defaults to today if omitted
     $dateFrom = $_GET['date_from'] ?? date('Y-m-d');
     $dateTo   = $_GET['date_to']   ?? date('Y-m-d');
 
-    // Fetch individual rows for the table
     $stmt = $db->prepare(
         'SELECT id, expense_date, amount, category, description,
                 recorded_by_name, created_at
@@ -26,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
-    // Aggregate summary for the same range (used by the summary cards)
     $sumStmt = $db->prepare(
         'SELECT
            COALESCE(SUM(amount), 0)                                        AS total_expenses,
@@ -51,11 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // ── POST: log a new expense (any authenticated user) ─────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Staff are allowed to create; requireAuth() covers both roles
     $user = requireAuth();
     $body = getBody();
-
-    // ── Validation ────────────────────────────────────────────
     $amount      = floatval($body['amount']      ?? 0);
     $category    = trim($body['category']        ?? '');
     $description = trim($body['description']     ?? '');
@@ -65,7 +59,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         respondError('Amount must be greater than zero.');
     }
 
-    // Whitelist the category values to match the ENUM definition
     $validCategories = ['Food', 'Utilities', 'Supplies', 'Transportation', 'Other'];
     if (!in_array($category, $validCategories, true)) {
         respondError('Invalid category. Must be one of: ' . implode(', ', $validCategories));
@@ -78,13 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         respondError('Description must be 255 characters or fewer.');
     }
 
-    // Validate date format (YYYY-MM-DD)
     $dt = DateTime::createFromFormat('Y-m-d', $expenseDate);
     if (!$dt || $dt->format('Y-m-d') !== $expenseDate) {
         respondError('Invalid date format. Expected YYYY-MM-DD.');
     }
 
-    // ── Insert ────────────────────────────────────────────────
     $stmt = $db->prepare(
         'INSERT INTO expenses
            (expense_date, amount, category, description, recorded_by_id, recorded_by_name)
@@ -103,7 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $newId = $stmt->insert_id;
     $stmt->close();
 
-    // Return the full inserted row so the UI can prepend it to the list
     $fetch = $db->prepare(
         'SELECT id, expense_date, amount, category, description,
                 recorded_by_name, created_at
@@ -131,7 +121,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     $stmt->bind_param('i', $id);
     $stmt->execute();
 
-    // affected_rows = 0 means the record didn't exist
     if ($stmt->affected_rows === 0) {
         $stmt->close();
         $db->close();

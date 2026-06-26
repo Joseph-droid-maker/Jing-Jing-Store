@@ -35,8 +35,6 @@ if (!$user['is_active']) {
 
 session_regenerate_id(true); 
 
-
-// Store session
 $_SESSION['user_id']   = $user['id'];
 $_SESSION['username']  = $user['username'];
 $_SESSION['full_name'] = $user['full_name'];

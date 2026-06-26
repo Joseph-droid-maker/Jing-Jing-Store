@@ -15,7 +15,7 @@ if (empty($_FILES['image'])) {
 }
 
 $file     = $_FILES['image'];
-$maxSize  = 2 * 1024 * 1024; // 2 MB
+$maxSize  = 5 * 1024 * 1024; 
 $allowed  = ['image/jpeg', 'image/png', 'image/webp'];
 $finfo    = finfo_open(FILEINFO_MIME_TYPE);
 $mimeType = finfo_file($finfo, $file['tmp_name']);
@@ -31,7 +31,7 @@ if (!in_array($mimeType, $allowed, true)) {
     respondError('Only JPG, PNG, and WebP images are allowed.');
 }
 
-// Generate unique filename
+
 $ext      = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'][$mimeType];
 $filename = uniqid('prod_', true) . '.' . $ext;
 $uploadDir = __DIR__ . '/../../uploads/products/';
@@ -46,7 +46,7 @@ if (!move_uploaded_file($file['tmp_name'], $destPath)) {
     respondError('Failed to save image.', 500);
 }
 
-// Update product image if product_id provided
+
 $productId = intval($_POST['product_id'] ?? 0);
 if ($productId) {
     $db   = getDB();

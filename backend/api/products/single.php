@@ -60,11 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     requireAdmin();
-
-    // NEW: "AND is_active = 1" is a guard, not just a filter. It means this
-    // statement can only ever affect a row that is currently active. If the
-    // product is already inactive, affected_rows comes back 0 and we report
-    // 404 instead of pretending a second "delete" did something.
     $stmt = $db->prepare('UPDATE products SET is_active = 0 WHERE id = ? AND is_active = 1');
     $stmt->bind_param('i', $id);
     $stmt->execute();
@@ -75,11 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     $db->close();
 
     if (!$affected) {
-        // CHANGED: message reflects the new guard condition above
         respondError('Product not found or already inactive.', 404);
     }
 
-    // CHANGED: was "Product permanently deleted." — it no longer is
     respond(true, null, 'Product deactivated.');
 }
 
