@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
 
-// Generic modal. Pass `danger` prop for delete-style header styling.
 export default function Modal({ open, onClose, title, children, footer, danger = false, size = 'md' }) {
-  // Close on Escape key
   useEffect(() => {
     if (!open) return;
     const handler = (e) => { if (e.key === 'Escape') onClose(); };

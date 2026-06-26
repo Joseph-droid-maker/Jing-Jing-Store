@@ -1,6 +1,4 @@
 <?php
-// ── Authentication Middleware ──────────────────────────────────
-
 function requireAuth(): array {
     if (empty($_SESSION['user_id'])) {
         respondError('Unauthorized. Please log in.', 401);

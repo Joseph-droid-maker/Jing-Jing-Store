@@ -83,8 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$productRow) throw new Exception("Product not found or inactive: ID $productId");
 
             $serverUnitPrice   = (float) $productRow['price'];
-            $productName       = $productRow['name'];   // server-truth, not client input
-            $productSku        = $productRow['sku'];    // server-truth, not client input
+            $productName       = $productRow['name'];  
+            $productSku        = $productRow['sku'];    
             $serverSubtotal    = round($serverUnitPrice * $qty, 2);
             $serverSubtotals[] = $serverSubtotal;
 

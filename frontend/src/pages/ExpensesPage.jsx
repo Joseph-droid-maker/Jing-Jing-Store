@@ -5,7 +5,6 @@ import { api, peso, today } from '../utils/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Banner from '../components/ui/Banner.jsx';
 import Modal from '../components/ui/Modal.jsx';
-
 import '../assets/uicons-solid-rounded/css/uicons-solid-rounded.css';
 
 const CATEGORIES = ['Food', 'Utilities', 'Supplies', 'Transportation', 'Other'];
@@ -33,8 +32,6 @@ function ExpenseForm({ onSaved }) {
 
   function validate() {
     const e = {};
-    // FIX (#9): parseFloat('1e500') = Infinity, which passes the original
-    // > 0 check. isNaN catches non-numeric strings; isFinite rejects Infinity.
     const parsed = parseFloat(amount);
     if (!amount || isNaN(parsed) || !isFinite(parsed) || parsed <= 0) {
       e.amount = 'Enter a valid amount greater than zero.';
@@ -49,10 +46,6 @@ function ExpenseForm({ onSaved }) {
   }
 
   const handleSubmit = async () => {
-    // FIX (#1): The button is disabled={saving} but the onKeyDown handler on
-    // the description input bypasses that entirely. Without this guard,
-    // pressing Enter while a save is in flight fires a second api.post —
-    // two identical expense rows inserted for a single user action.
     if (saving) return;
 
     const e = validate();
@@ -67,10 +60,8 @@ function ExpenseForm({ onSaved }) {
         description:  description.trim(),
         expense_date: expenseDate,
       });
-      // saved.data is the newly inserted row returned by the PHP endpoint
       onSaved(saved.data);
       toast.success('Expense logged.');
-      // Keep date and category for fast repeat entry; reset amount and description
       setAmount('');
       setDescription('');
     } catch (err) {
@@ -92,9 +83,6 @@ function ExpenseForm({ onSaved }) {
             type="date"
             className="input"
             value={expenseDate}
-            // FIX (#3): No upper bound allowed future-dated expenses to be
-            // submitted silently. Called on every render so the max stays
-            // accurate if the page stays open past midnight.
             max={today()}
             onChange={e => setExpenseDate(e.target.value)}
           />

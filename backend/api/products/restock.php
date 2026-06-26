@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') respondError('Method not allowed.', 4
 $body      = getBody();
 $productId = intval($body['product_id'] ?? 0);
 $quantity  = intval($body['quantity']   ?? 0);
-$type      = $body['type']  ?? 'in';   // 'in' = add stock, 'out' = remove stock
+$type      = $body['type']  ?? 'in';  
 $notes     = trim($body['notes'] ?? '');
 
 if (!$productId)   respondError('Product ID is required.');
@@ -49,7 +49,7 @@ if ($type === 'out') {
     $stmt->close();
 }
 
-// Return updated product
+
 $stmt2 = $db->prepare(
     'SELECT p.*, c.name AS category_name FROM products p
      LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?'

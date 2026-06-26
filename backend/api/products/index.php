@@ -84,7 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $newId = $stmt->insert_id;
     $stmt->close();
 
-    // Return newly created product
     $stmt2 = $db->prepare(
         'SELECT p.*, c.name AS category_name FROM products p
          LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?'

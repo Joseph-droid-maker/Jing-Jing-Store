@@ -47,7 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     $id = intval($_GET['id'] ?? 0);
     if (!$id) respondError('Category ID is required.');
 
-    // Block deletion if products still use this category
     $check = $db->prepare(
         'SELECT COUNT(*) AS cnt FROM products WHERE category_id = ? AND is_active = 1'
     );

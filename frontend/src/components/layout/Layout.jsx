@@ -2,10 +2,10 @@ import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import Sidebar from './Sidebar.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import '../../assets/uicons-solid-rounded/css/uicons-solid-rounded.css';
 
 export default function Layout() {
   const { user } = useAuth();
-  // Controls the mobile slide-in sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -28,7 +28,7 @@ export default function Layout() {
               onClick={() => setSidebarOpen(true)}
               aria-label="Open navigation menu"
             >
-              ☰
+              <i className="fi fi-sr-menu-burger"></i>
             </button>
             <span className="topbar__store"></span>
           </div>
