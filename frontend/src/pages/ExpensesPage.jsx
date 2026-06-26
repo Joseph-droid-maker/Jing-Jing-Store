@@ -1,9 +1,3 @@
-// frontend/src/pages/ExpensesPage.jsx
-// ============================================================
-// Accessible to all authenticated users (staff + admin).
-// Staff: log new expenses, see today's entries.
-// Admin: additionally filter by date range and delete entries.
-// ============================================================
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
@@ -12,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import Banner from '../components/ui/Banner.jsx';
 import Modal from '../components/ui/Modal.jsx';
 
+import '../assets/uicons-solid-rounded/css/uicons-solid-rounded.css';
 
 const CATEGORIES = ['Food', 'Utilities', 'Supplies', 'Transportation', 'Other'];
 
@@ -32,10 +27,6 @@ function ExpenseForm({ onSaved }) {
   const [amount,      setAmount]      = useState('');
   const [category,    setCategory]    = useState('Food');
   const [description, setDescription] = useState('');
-  // FIX (#13): Lazy initializer — today() is called at mount time, not at
-  // module import time. Marginally better for midnight staleness: if the
-  // component unmounts and remounts (e.g. route change), it picks up the
-  // current date rather than a cached value from when the module first loaded.
   const [expenseDate, setExpenseDate] = useState(() => today());
   const [saving,      setSaving]      = useState(false);
   const [errors,      setErrors]      = useState({});
@@ -178,47 +169,21 @@ function ExpenseForm({ onSaved }) {
 export default function ExpensesPage() {
   const { user } = useAuth();
   const isAdmin  = user?.role === 'admin';
-
-  // FIX (#13): Lazy initialisers so today() is called at mount time
   const [dateFrom,  setDateFrom]  = useState(() => today());
   const [dateTo,    setDateTo]    = useState(() => today());
   const [expenses,  setExpenses]  = useState([]);
   const [summary,   setSummary]   = useState(null);
   const [loading,   setLoading]   = useState(false);
   const [banner,    setBanner]    = useState(null);
-
-  // Delete confirmation state (admin only)
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting,     setDeleting]     = useState(false);
-
-  // ── FIX (#8): Generation counter for race condition protection ───
-  // Each loadExpenses call increments this counter and stamps itself with
-  // the current value. When the async response arrives, it checks if its
-  // stamp still matches — if a newer call has fired in the meantime, the
-  // stale response is discarded and does not overwrite state.
   const loadGenRef = useRef(0);
-
-  // ── Active range ref ─────────────────────────────────────────────
-  // Tracks the date range most recently passed to loadExpenses.
-  // handleSaved and handleDelete read this to reload the same window after
-  // mutations, without closing over dateFrom/dateTo state (which would
-  // force those values into useCallback deps and recreate the function on
-  // every admin keystroke).
   const activeRangeRef = useRef({ from: today(), to: today() });
-
-  // ── Core data loader ─────────────────────────────────────────────
-  // FIX (#6): Accepts explicit from/to params instead of closing over
-  // dateFrom/dateTo state. useCallback dep array is therefore empty —
-  // the function is only ever recreated if the component remounts, not on
-  // every date-input change. This breaks the chain:
-  //   dateFrom change → new loadExpenses ref → useEffect fires → API call
+  
   const loadExpenses = useCallback(async (from, to) => {
     activeRangeRef.current = { from, to };
 
-    const gen = ++loadGenRef.current; // stamp this invocation
-
-    // FIX (#7): Clear stale summary immediately so the previous period's
-    // totals are not shown while the new range is loading.
+    const gen = ++loadGenRef.current;
     setLoading(true);
     setSummary(null);
     setBanner(null);
@@ -240,36 +205,11 @@ export default function ExpensesPage() {
       // call finishes after a newer one, it must not kill the new load's spinner.
       if (gen === loadGenRef.current) setLoading(false);
     }
-  }, []); // intentionally empty: params are explicit, no state closures
-
-  // Staff: auto-load today on mount only. The empty dep array (beyond
-  // stable refs) means this fires once — not on every date-input change.
+  }, []); 
   useEffect(() => {
     if (!isAdmin) loadExpenses(today(), today());
   }, [isAdmin, loadExpenses]);
 
-  // ── FIX (#2 + #1 float arithmetic): Post-mutation server reload ──
-  // The original prepended the new row and updated summary totals locally
-  // using parseFloat + JS float arithmetic. Two compounding problems:
-  //
-  //   1. JS float arithmetic is imprecise for money:
-  //      0.1 + 0.2 = 0.30000000000000004. .toFixed(2) only masks display.
-  //
-  //   2. The update ran regardless of the active filter: logging an expense
-  //      for a different date would prepend it into a historical view and
-  //      corrupt that period's summary totals with today's amount.
-  //
-  // Fix: after any successful mutation, reload from the server. The server
-  // returns correct DECIMAL values. The brief loading state is the correct
-  // tradeoff for a financial application where accuracy is non-negotiable.
-  //
-  // This also resolves (#5) the race condition: the server reload always
-  // reflects the committed DB state, so there is no "stale mount response
-  // overwrites optimistic prepend" scenario.
-  //
-  // useCallback required: onSaved is passed as a prop to ExpenseForm.
-  // Without it, every parent render gives ExpenseForm a new reference,
-  // defeating React.memo if it is ever added to ExpenseForm.
   const handleSaved = useCallback(() => {
     const { from, to } = activeRangeRef.current;
     loadExpenses(from, to);
@@ -282,8 +222,6 @@ export default function ExpensesPage() {
       await api.delete(`/expenses/index.php?id=${deleteTarget.id}`);
       toast.success('Expense deleted.');
       setDeleteTarget(null);
-      // Same rationale as handleSaved: reload from server instead of
-      // manually subtracting from local state with float arithmetic.
       const { from, to } = activeRangeRef.current;
       await loadExpenses(from, to);
     } catch (err) {
@@ -293,9 +231,6 @@ export default function ExpensesPage() {
     }
   };
 
-  // Admin manual trigger — reads current dateFrom/dateTo at call time.
-  // Kept as a plain function (not in useEffect) so typing in the date
-  // inputs never fires an API call without explicit user intent.
   const handleGenerate = () => loadExpenses(dateFrom, dateTo);
 
   return (
@@ -365,9 +300,6 @@ export default function ExpensesPage() {
       )}
 
       {/* ── Expenses table ───────────────────────────────────── */}
-      {/* FIX (#11): Hide the table entirely while loading. Original rendered
-          both the outer spinner AND a "Loading…" row inside the table
-          simultaneously. Now the spinner is the single source of loading state. */}
       {!loading && (
         <div className="table-wrap">
           <table className="table">
@@ -453,7 +385,7 @@ export default function ExpensesPage() {
             </button>
           </div>
         }
-      >
+       >
         <p>
           Delete the{' '}
           <strong>{deleteTarget?.category}</strong> expense of{' '}

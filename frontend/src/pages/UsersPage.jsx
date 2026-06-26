@@ -4,6 +4,8 @@ import { api } from '../utils/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Modal from '../components/ui/Modal.jsx';
 import Banner from '../components/ui/Banner.jsx';
+import '../assets/uicons-solid-rounded/css/uicons-solid-rounded.css';
+
 
 export default function UsersPage() {
   const { user: me } = useAuth();
@@ -154,7 +156,7 @@ export default function UsersPage() {
                   <td><code className="sku-code">{u.username}</code></td>
                   <td>
                     <span className={`badge badge--role badge--${u.role}`}>
-                      {u.role === 'admin' ? '🔑 Admin' : '👤 Staff'}
+                      {u.role === 'admin' ? 'Admin' : 'Staff'}
                     </span>
                   </td>
                   <td>
@@ -174,7 +176,7 @@ export default function UsersPage() {
                           onClick={() => setDeactId(u.id)}
                           title={u.is_active ? 'Deactivate' : 'Reactivate'}
                         >
-                         <i className={u.is_active ? 'fi fi-sr-user-slash' : 'fi fi-sr-user-slash'} />
+                         <i className={u.is_active ? 'fi fi-sr-user-slash' : 'fi fi-sr-user-check'} />
                         </button>
                       )}
                     </div>
@@ -190,7 +192,7 @@ export default function UsersPage() {
       <Modal
         open={modal === 'form'}
         onClose={() => setModal(null)}
-        title={editing ? `✏️ Edit: ${editing.username}` : '+ New User'}
+        title={editing ? `Edit User — ${editing.username}` : 'New User'}
         size="sm"
         footer={
           <div className="modal-footer-btns">
@@ -236,8 +238,8 @@ export default function UsersPage() {
         <div className="form-group">
           <label className="form-label">Role *</label>
           <select className="input" value={form.role} onChange={e => setField('role', e.target.value)}>
-            <option value="staff">👤 Staff (POS access only)</option>
-            <option value="admin">🔑 Admin (full access)</option>
+            <option value="staff">Staff — POS access only</option>
+            <option value="admin">Admin — full access</option>
           </select>
         </div>
       </Modal>

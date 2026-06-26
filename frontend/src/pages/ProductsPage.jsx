@@ -4,7 +4,7 @@ import { api, imgUrl, peso } from '../utils/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Modal from '../components/ui/Modal.jsx';
 import Banner from '../components/ui/Banner.jsx';
-
+import '../assets/uicons-solid-rounded/css/uicons-solid-rounded.css';
 
 function StockModal({ product, onClose, onSaved }) {
   const [type,    setType]    = useState('in');
@@ -34,7 +34,7 @@ function StockModal({ product, onClose, onSaved }) {
   };
 
   return (
-    <Modal open onClose={onClose} title={`📦 Adjust Stock — ${product.name}`} size="sm"
+    <Modal open onClose={onClose} title={`Adjust Stock — ${product.name}`} size="sm"
       footer={
         <div className="modal-footer-btns">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
@@ -45,21 +45,19 @@ function StockModal({ product, onClose, onSaved }) {
       }
     >
       <div className="stock-current">
-        <span className="stock-current__label">Current Stock</span>
+        <span className="stock-current__label">Current Stock </span>
         <span className="stock-current__val">{product.stock} units</span>
       </div>
 
       <div className="form-group">
         <label className="form-label">Adjustment Type</label>
         <div style={{ display:'flex', gap:8 }}>
-          <button
-            className={`btn ${type==='in' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setType('in')}
-          >📦 Stock In</button>
-          <button
-            className={`btn ${type==='out' ? 'btn-danger' : 'btn-ghost'}`}
-            onClick={() => setType('out')}
-          >📤 Stock Out</button>
+          <button className={`btn ${type==='in' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setType('in')}>
+            <i className="fi fi-sr-box-open" /> Stock In
+          </button>
+          <button className={`btn ${type==='out' ? 'btn-danger' : 'btn-ghost'}`} onClick={() => setType('out')}>
+            <i class= "fi fi-sr-out-of-stock"></i> Stock Out
+          </button>
         </div>
       </div>
 
@@ -93,7 +91,6 @@ function StockModal({ product, onClose, onSaved }) {
   );
 }
 
-// ── CSV + Excel Import sub-modal ─────────────────────────────
 function ImportModal({ onClose }) {
 
   const { csrfToken } = useAuth();
@@ -118,17 +115,14 @@ function ImportModal({ onClose }) {
     a.click();
   };
 
-  // Converts Excel file to a CSV File object using the xlsx library.
   const excelToCsvFile = async (excelFile) => {
     const XLSX = await import('xlsx');
     const buffer = await excelFile.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array' });
 
-    // Use the first sheet
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
     const csvString  = XLSX.utils.sheet_to_csv(firstSheet);
 
-    // Wrap the CSV string as a File so we can send it to the same PHP endpoint
     return new File([csvString], 'import.csv', { type: 'text/csv' });
   };
 
@@ -141,7 +135,6 @@ function ImportModal({ onClose }) {
     try {
       let uploadFile = file;
 
-      // If Excel, convert to CSV first (all on the frontend — no PHP library needed)
       const isExcel = /\.(xlsx|xls)$/i.test(file.name);
       if (isExcel) {
         uploadFile = await excelToCsvFile(file);
@@ -167,7 +160,7 @@ function ImportModal({ onClose }) {
     <Modal
       open
       onClose={onClose}
-      title="↑ Import Products"
+      title="Import Products"
       size="md"
       footer={
         <div className="modal-footer-btns">
@@ -237,7 +230,12 @@ function ImportModal({ onClose }) {
         </div>
       )}
 
-      {parseError && <p className="field-error">⚠ {parseError}</p>}
+      {parseError && (
+        <p className="field-error">
+          <i className="fi fi-sr-triangle-warning" style={{marginRight: 6}} />
+          {parseError}
+        </p>
+      )}
 
       {result && (
         <div className="import-result">
@@ -262,7 +260,6 @@ function ImportModal({ onClose }) {
   );
 }
 
-// ── Category Management Modal ────────────────────────────────
 function CategoryModal({ categories, onClose, onSaved }) {
   const [newName, setNewName] = useState('');
   const [error,   setError]   = useState('');
@@ -300,7 +297,7 @@ function CategoryModal({ categories, onClose, onSaved }) {
 
   return (
     <>
-      <Modal open onClose={onClose} title="🏷️ Manage Categories" size="sm"
+      <Modal open onClose={onClose} title="Manage Categories" size="sm"
         footer={<div className="modal-footer-btns"><button className="btn btn-primary" onClick={onClose}>Done</button></div>}
       >
         <div className="form-group">
@@ -332,7 +329,7 @@ function CategoryModal({ categories, onClose, onSaved }) {
                   className="btn btn-danger btn-sm"
                   onClick={() => setDeleteId(c.id)}
                   title="Remove category"
-                >🗑️</button>
+                ><i className="fi fi-sr-trash" /></button>
               </div>
             ))}
           </div>
@@ -355,7 +352,8 @@ function CategoryModal({ categories, onClose, onSaved }) {
           <p>Remove <strong>"{toDelete?.name}"</strong>?</p>
           {toDelete?.product_count > 0
             ? <p className="field-error" style={{marginTop:8}}>
-                ⚠ This category has {toDelete.product_count} product(s). Reassign them first.
+                <i className="fi fi-sr-triangle-warning" style={{marginRight: 6}} />
+                This category has {toDelete.product_count} product(s). Reassign them first.
               </p>
             : <p className="form-hint" style={{marginTop:8}}>This category has no products and can be safely removed.</p>
           }
@@ -363,10 +361,10 @@ function CategoryModal({ categories, onClose, onSaved }) {
     </>
   );
 }
-// ── Main Page ────────────────────────────────────────────────
+
 export default function ProductsPage() {
   
-  const { user, csrfToken } = useAuth(); // add csrfToken here
+  const { user, csrfToken } = useAuth();
   const isAdmin     = user?.role === 'admin';
 
   const [products,   setProducts]   = useState([]);
@@ -377,7 +375,7 @@ export default function ProductsPage() {
   const [filterStatus, setFilterStatus] = useState('active'); 
   const [loading,    setLoading]    = useState(true);
   const [banner,     setBanner]     = useState(null);
-  const [modal,      setModal]      = useState(null); // null | 'form' | 'import'
+  const [modal,      setModal]      = useState(null); 
   const [editing,    setEditing]    = useState(null);
   const [deleteId,   setDeleteId]   = useState(null);
   const [stockProd,  setStockProd]  = useState(null);
@@ -392,15 +390,13 @@ export default function ProductsPage() {
   
   
 
-  // ── Load ───────────────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true); setBanner(null);
     try {
-      // NEW: only add the query string when viewing the Inactive tab —
-      // keeps the default request identical to before for the common case.
+
       const statusQuery = filterStatus === 'inactive' ? '?status=inactive' : '';
       const [pr, cr] = await Promise.all([
-        api.get(`/products/index.php${statusQuery}`), // CHANGED: was a static string
+        api.get(`/products/index.php${statusQuery}`),
         api.get('/categories/index.php'),
       ]);
       setProducts(pr.data || []);
@@ -414,7 +410,6 @@ export default function ProductsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Filtered list + stats ──────────────────────────────────
 const filtered = products.filter(p => {
   const q = search.toLowerCase();
   const matchSearch = !q ||
@@ -433,14 +428,12 @@ const filtered = products.filter(p => {
   const outOfStock = products.filter(p => p.stock <= 0).length;
   const lowStock   = products.filter(p => p.stock > 0 && p.stock <= 10).length;
 
-  // ── Open add ──────────────────────────────────────────────
   const openAdd = () => {
     setForm(EMPTY_FORM); setFormErrors({});
     setImageFile(null);  setImgPreview(null);
     setEditing(null);    setModal('form');
   };
 
-  // ── Open edit ─────────────────────────────────────────────
   const openEdit = (p) => {
     setForm({
         name: p.name, description: p.description || '',
@@ -453,7 +446,6 @@ const filtered = products.filter(p => {
     setEditing(p); setModal('form');
   };
 
-  // ── Validation ─────────────────────────────────────────────
   const validate = () => {
     const e = {};
     if (!form.name.trim())                         e.name  = 'Product name is required.';
@@ -463,7 +455,6 @@ const filtered = products.filter(p => {
     return !Object.keys(e).length;
   };
 
-  // ── Save ───────────────────────────────────────────────────
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
@@ -489,7 +480,6 @@ const filtered = products.filter(p => {
         toast.success('Product added!');
       }
 
-      // Upload image if chosen
       if (imageFile && saved) {
         const fd = new FormData();
         fd.append('csrf_token', csrfToken);
@@ -507,17 +497,16 @@ const filtered = products.filter(p => {
     }
   };
 
-  // ── Delete ─────────────────────────────────────────────────
   const handleToggle = async () => {
-    const p = products.find(p => p.id === deleteId); // look up the row by id
-    if (!p) return; // guard: stale id / modal already closed, nothing to do
+    const p = products.find(p => p.id === deleteId); 
+    if (!p) return; 
 
     try {
       if (p.is_active) {
-        await api.delete(`/products/single.php?id=${p.id}`); // soft-deactivate
+        await api.delete(`/products/single.php?id=${p.id}`);
         toast.success('Product deactivated.');
       } else {
-        await api.patch(`/products/single.php?id=${p.id}`);  // reactivate
+        await api.patch(`/products/single.php?id=${p.id}`); 
         toast.success('Product reactivated.');
       }
       setDeleteId(null);
@@ -534,7 +523,6 @@ const filtered = products.filter(p => {
     setFormErrors(fe => ({ ...fe, [key]: '' }));
   };
 
-  // ── Render ─────────────────────────────────────────────────
   return (
     <div className="page">
       {/* Header */}
@@ -588,7 +576,7 @@ const filtered = products.filter(p => {
           className="input"
           value={filterStock}
           onChange={e => setFilterStock(e.target.value)}
-          style={{ maxWidth: 190, appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
+          style={{ maxWidth: 190}}
         >
           <option value="all">All Stock</option>
           <option value="in">In Stock</option>
@@ -652,7 +640,7 @@ const filtered = products.filter(p => {
                   </td>
                   <td>
                     <strong>{p.name}</strong>
-                     {p.description && <div className="text-muted" style={{fontSize:11}}>{p.description}</div>}
+                     {p.description && <div className="text-muted">{p.description}</div>}
                   </td>
                   <td><code className="sku-code">{p.sku || '—'}</code></td>
                   <td>
@@ -696,7 +684,7 @@ const filtered = products.filter(p => {
       <Modal
         open={modal === 'form'}
         onClose={() => setModal(null)}
-        title={editing ? '✏️ Edit Product' : '+ Add Product'}
+        title={editing ? `Edit Product — ${editing.name}` : 'Add Product'}
         size="md"
         footer={
           <div className="modal-footer-btns">

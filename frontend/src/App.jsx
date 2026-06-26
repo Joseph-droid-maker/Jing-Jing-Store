@@ -10,7 +10,7 @@ import ReportsPage from './pages/ReportsPage.jsx';
 import UsersPage from './pages/UsersPage.jsx';
 import ExpensesPage from './pages/ExpensesPage.jsx'; 
 
-// Redirects to /login if unauthenticated; to /pos if not admin and adminOnly is true.
+
 function Guard({ adminOnly = false, children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading"><div className="spinner" /></div>;
@@ -22,7 +22,7 @@ function Guard({ adminOnly = false, children }) {
 export default function App() {
   return (
     <AuthProvider>
-      {/* react-hot-toast container – styled to match the nude-yellow theme */}
+     
       <Toaster
         position="top-right"
         toastOptions={{
@@ -36,31 +36,30 @@ export default function App() {
           error:   { iconTheme: { primary: '#B83030', secondary: '#fff' } },
         }}
       />
-      {/* // basename="/saripos" */}
-      <BrowserRouter >
+      {/* basename="/saripos */}
+      <BrowserRouter>
         <Routes>
-          {/* Public */}
+     
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected shell */}
           <Route
             path="/"
             element={<Guard><Layout /></Guard>}
           >
             <Route index element={<Navigate to="/pos" replace />} />
 
-            {/* All authenticated users */}
+       
             <Route path="pos"   element={<POSPage />} />
             <Route path="expenses" element={<Guard><ExpensesPage /></Guard>} />
             <Route path="sales" element={<Guard adminOnly><SalesPage /></Guard>} />
 
-            {/* Admin only */}
+            
             <Route path="products" element={<Guard adminOnly><ProductsPage /></Guard>} />
             <Route path="reports"  element={<Guard adminOnly><ReportsPage /></Guard>} />
             <Route path="users"    element={<Guard adminOnly><UsersPage /></Guard>} />
           </Route>
 
-          {/* Catch-all */}
+       
           <Route path="*" element={<Navigate to="/pos" replace />} />
         </Routes>
       </BrowserRouter>
