@@ -263,7 +263,7 @@ function ConfirmOrderModal({ cart, total, cashNum, change, processing, onConfirm
       <div className="confirm-order">
         <p style={{
           fontSize: '0.85rem',
-          color: 'var(--color-muted, #666)',
+          color: 'var(--text3)',
           marginBottom: '0.75rem',
           lineHeight: 1.4,
         }}>
@@ -274,7 +274,7 @@ function ConfirmOrderModal({ cart, total, cashNum, change, processing, onConfirm
           fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
-          color: 'var(--color-muted, #999)',
+          color: 'var(--text3)',
           marginBottom: '0.4rem',
         }}>
           {itemCount} item{itemCount !== 1 ? 's' : ''}

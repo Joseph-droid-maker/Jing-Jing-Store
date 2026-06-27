@@ -12,9 +12,29 @@ $id = intval($_GET['id'] ?? 0);
 if (!$id) respondError('User ID is required.');
 
 if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+
+    
     $body     = getBody();
     $fullName = trim($body['full_name'] ?? '');
-    $role     = in_array($body['role'] ?? '', ['admin','staff']) ? $body['role'] : 'staff';
+    if ((int)$id === (int)$currentUser['id']) {
+        $role     =  "admin";
+    }else{
+        $role     = in_array($body['role'] ?? '', ['admin','staff']) ? $body['role'] : 'staff';
+    }
+
+    $adminCheck = $db->prepare(
+    'SELECT COUNT(*) AS cnt FROM users
+        WHERE role = "admin" AND is_active = 1 AND id != ?'
+    );
+    $adminCheck->bind_param('i', $id);
+    $adminCheck->execute();
+    $remaining = (int) $adminCheck->get_result()->fetch_assoc()['cnt'];
+    $adminCheck->close();
+
+    if ($remaining === 0) {
+        $role     =  "admin";
+    }
+
     $password = $body['password'] ?? '';
 
     if (!$fullName) respondError('Full name is required.');
