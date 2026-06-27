@@ -254,7 +254,7 @@ export default function UsersPage() {
             <option value="admin">Admin — full access</option>
           </select>
           {roleLocked && (
-            <p className="field-hint">
+            <p className="form-hint">
               This is the only active admin account — role can't be changed here.
               Promote another user to admin first if you need to change this.
             </p>
