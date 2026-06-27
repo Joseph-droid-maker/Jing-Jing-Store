@@ -113,6 +113,13 @@ export default function UsersPage() {
   const setField = (k, v) => { setForm(f => ({ ...f, [k]: v })); setFormErrors(fe => ({ ...fe, [k]: '' })); };
   const toggleUser = users.find(u => u.id === deactId);
 
+  const isLastActiveAdmin = (targetUser) => {
+    if (!targetUser || targetUser.role !== 'admin' || !targetUser.is_active) return false;
+    const activeAdmins = users.filter(u => u.role === 'admin' && u.is_active);
+    return activeAdmins.length === 1;
+  };
+
+  const roleLocked = isLastActiveAdmin(editing);
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className="page">
@@ -237,10 +244,21 @@ export default function UsersPage() {
 
         <div className="form-group">
           <label className="form-label">Role *</label>
-          <select className="input" value={form.role} onChange={e => setField('role', e.target.value)}>
+          <select
+            className="input"
+            value={form.role}
+            onChange={e => setField('role', e.target.value)}
+            disabled={roleLocked}
+          >
             <option value="staff">Staff — POS access only</option>
             <option value="admin">Admin — full access</option>
           </select>
+          {roleLocked && (
+            <p className="field-hint">
+              This is the only active admin account — role can't be changed here.
+              Promote another user to admin first if you need to change this.
+            </p>
+          )}
         </div>
       </Modal>
 
