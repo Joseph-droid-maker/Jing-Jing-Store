@@ -1,7 +1,4 @@
-// Base path for ALL API calls.
-// In development, Vite proxies /saripos → http://localhost (XAMPP).
-// In production, /saripos/backend/api is served directly by Apache.
-const BASE = '/saripos/backend/api';
+const BASE = '/Jing-Jing-Store/backend/api';
 
 async function request(path, opts = {}) {
   const isFormData = opts.body instanceof FormData;
@@ -40,7 +37,7 @@ export const api = {
 // Helper: build image URL from relative path stored in DB
 export function imgUrl(path) {
   if (!path) return null;
-  return `/saripos/backend/${path}`;
+  return `/Jing-Jing-Store/backend/${path}`;
 }
 
 // Helper: Philippine peso format

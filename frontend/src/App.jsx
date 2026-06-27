@@ -36,7 +36,7 @@ export default function App() {
           error:   { iconTheme: { primary: '#B83030', secondary: '#fff' } },
         }}
       />
-      {/* basename="/saripos */}
+      {/* basename="/Jing-Jing-Store */}
       <BrowserRouter>
         <Routes>
      
