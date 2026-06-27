@@ -56,7 +56,7 @@ function StockModal({ product, onClose, onSaved }) {
             <i className="fi fi-sr-box-open" /> Stock In
           </button>
           <button className={`btn ${type==='out' ? 'btn-danger' : 'btn-ghost'}`} onClick={() => setType('out')}>
-            <i class= "fi fi-sr-out-of-stock"></i> Stock Out
+            <i className= "fi fi-sr-out-of-stock"></i> Stock Out
           </button>
         </div>
       </div>
