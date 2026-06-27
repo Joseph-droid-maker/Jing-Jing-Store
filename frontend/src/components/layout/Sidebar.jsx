@@ -35,7 +35,7 @@ export default function Sidebar({ open, onClose }) {
 
         {/* Brand + mobile close button */}
         <div className="sidebar__brand">
-          <span className="sidebar__logo"><img src={logo} alt="Jing-Jing Store Logo" className="login-deco__logo"/></span>
+          <span className="sidebar__logo"><img src={logo} alt="Jing-Jing Store Logo"/></span>
           <span className="sidebar__name">Jing Jing</span>
           {/* Close button: only visible on mobile via CSS */}
           <button

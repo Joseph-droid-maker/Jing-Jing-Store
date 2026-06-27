@@ -105,8 +105,6 @@ export default function LoginPage() {
           <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
-
-          <p className="login-hint">Default: admin / admin123</p>
         </form>
       </div>
     </div>
