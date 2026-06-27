@@ -13,37 +13,49 @@ if (!$id) respondError('User ID is required.');
 
 if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 
-    
     $body     = getBody();
     $fullName = trim($body['full_name'] ?? '');
-    if ((int)$id === (int)$currentUser['id']) {
-        $role     =  "admin";
-    }else{
-        $role     = in_array($body['role'] ?? '', ['admin','staff']) ? $body['role'] : 'staff';
-    }
-
-    $adminCheck = $db->prepare(
-    'SELECT COUNT(*) AS cnt FROM users
-        WHERE role = "admin" AND is_active = 1 AND id != ?'
-    );
-    $adminCheck->bind_param('i', $id);
-    $adminCheck->execute();
-    $remaining = (int) $adminCheck->get_result()->fetch_assoc()['cnt'];
-    $adminCheck->close();
-
-    if ($remaining === 0) {
-        $role     =  "admin";
-    }
-
     $password = $body['password'] ?? '';
 
     if (!$fullName) respondError('Full name is required.');
+    if ($password && strlen($password) < 6) respondError('Password must be at least 6 characters.');
+
+    $current = $db->prepare('SELECT role, is_active FROM users WHERE id = ?');
+    $current->bind_param('i', $id);
+    $current->execute();
+    $currentRow = $current->get_result()->fetch_assoc();
+    $current->close();
+
+    if (!$currentRow) respondError('User not found.', 404);
+
+    $currentRole     = $currentRow['role'];
+    $currentIsActive = (int) $currentRow['is_active'];
+
+    $requestedRole = $body['role'] ?? null;
+    $role = in_array($requestedRole, ['admin', 'staff'], true) ? $requestedRole : $currentRole;
+
+    $isDemotingActiveAdmin = ($currentRole === 'admin' && $currentIsActive === 1 && $role !== 'admin');
+
+    if ($isDemotingActiveAdmin) {
+
+        $adminCheck = $db->prepare(
+            "SELECT COUNT(*) AS cnt FROM users
+                WHERE role = 'admin' AND is_active = 1 AND id != ?"
+        );
+        $adminCheck->bind_param('i', $id);
+        $adminCheck->execute();
+        $remaining = (int) $adminCheck->get_result()->fetch_assoc()['cnt'];
+        $adminCheck->close();
+
+        if ($remaining === 0) {
+            $role = 'admin';
+        }
+    }
 
     if ($password) {
-        if (strlen($password) < 6) respondError('Password must be at least 6 characters.');
         $hash = password_hash($password, PASSWORD_BCRYPT);
         $stmt = $db->prepare('UPDATE users SET full_name=?, role=?, password_hash=? WHERE id=?');
-        $stmt->bind_param('sssi', $fullName, $role,  $hash, $id);
+        $stmt->bind_param('sssi', $fullName, $role, $hash, $id);
     } else {
         $stmt = $db->prepare('UPDATE users SET full_name=?, role=? WHERE id=?');
         $stmt->bind_param('ssi', $fullName, $role, $id);
