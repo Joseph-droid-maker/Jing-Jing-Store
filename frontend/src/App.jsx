@@ -36,8 +36,8 @@ export default function App() {
           error:   { iconTheme: { primary: '#B83030', secondary: '#fff' } },
         }}
       />
-      {/* basename="/Jing-Jing-Store */}
-      <BrowserRouter>
+      {/* basename="/Jing-Jing-Store" */}
+      <BrowserRouter  >
         <Routes>
      
           <Route path="/login" element={<LoginPage />} />

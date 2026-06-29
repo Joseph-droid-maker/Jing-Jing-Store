@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $txnCode     = 'TXN-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
     $cashierName = $user['full_name'];
-    $itemCount   = count($items); 
+    $itemCount = array_sum(array_column($items, 'quantity'));
 
     $db->begin_transaction();
     try {
