@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../middleware/auth.php';
 requireAdmin();
 $db = getDB();
+
 $result = $db->query(
     "SELECT DATE_FORMAT(created_at,'%Y-%m') AS month,
             DATE_FORMAT(created_at,'%M %Y')  AS month_label,

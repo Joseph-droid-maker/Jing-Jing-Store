@@ -92,59 +92,73 @@ function StockModal({ product, onClose, onSaved }) {
 }
 
 function ImportModal({ onClose }) {
-
+ 
   const { csrfToken } = useAuth();
-
-  const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+ 
+  // Core state — mirrors the original; no extra state needed after removing conversion
+  const [file,       setFile]       = useState(null);
+  const [loading,    setLoading]    = useState(false);
+  const [result,     setResult]     = useState(null);
   const [parseError, setParseError] = useState('');
   const [importMode, setImportMode] = useState('skip');
-
-  const downloadTemplate = () => {
-    const csv = [
-      'Item Name,Description/Size,Current Stock,Cost Price,Retail Price,SKU,Category',
-      'Coca-Cola 1.5L,,50,67.80,80,CC-1.5L,Drinks',
-      'Lucky Me Pancit Canton,,200,10.50,14,LM-PC,Noodles',
-      'Safeguard Soap,,80,30.00,38,SG-SOAP,Toiletries',
-    ].join('\n');
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
-      download: 'Jing-Jing_template.csv',
-    });
-    a.click();
-  };
-
-  const excelToCsvFile = async (excelFile) => {
+ 
+  /**
+   * Generates and immediately downloads a pre-formatted .xlsx template.
+   *
+   * The Image column header is included so Excel shows the column in the right
+   * position, but its sample cells are intentionally empty — the user drags or
+   * inserts pictures into those cells themselves before importing.
+   *
+   * SheetJS is lazy-imported here (not at the top of the file) because it is
+   * only needed when the user clicks the button, avoiding an ~1 MB bundle hit
+   * on every page load.
+   */
+  const downloadTemplate = async () => {
+    // Lazy-load SheetJS; it's already in the bundle from the old excelToCsvFile
+    // usage, so this is a cache hit — no extra network request.
     const XLSX = await import('xlsx');
-    const buffer = await excelFile.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array' });
-
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const csvString  = XLSX.utils.sheet_to_csv(firstSheet);
-
-    return new File([csvString], 'import.csv', { type: 'text/csv' });
+ 
+    // Build the sheet from a 2D array: first element is the header row,
+    // subsequent elements are sample data rows.
+    // The Image column is column index 7 (H) — intentionally left blank in
+    // the template since images are inserted as Excel picture objects, not text.
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['Item Name', 'Description/Size', 'Current Stock', 'Cost Price', 'Retail Price', 'SKU', 'Category', 'Image'],
+      ['Coca-Cola 1.5L',        '',  50, 67.80, 80, 'CC-1.5L',  'Drinks',     ''],
+      ['Lucky Me Pancit Canton','', 200, 10.50, 14, 'LM-PC',    'Noodles',    ''],
+      ['Safeguard Soap',        '',  80, 30.00, 38, 'SG-SOAP',  'Toiletries', ''],
+    ]);
+ 
+    // Create a new workbook and attach the sheet
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+ 
+    // writeFile() triggers the browser's Save As dialog automatically
+    XLSX.writeFile(wb, 'Jing-Jing_template.xlsx');
   };
-
+ 
+  /**
+   * Sends the raw Excel file directly to the server.
+   *
+   * No client-side parsing or format conversion is done here anymore.
+   * PhpSpreadsheet on the server handles xlsx/xls reading AND embedded
+   * image extraction in one pass. This also means we never corrupt images
+   * by piping them through a CSV string (which was impossible before anyway).
+   */
   const handleImport = async () => {
     if (!file) { toast.error('Please select a file first.'); return; }
-
+ 
     setLoading(true);
     setParseError('');
-
+ 
     try {
-      let uploadFile = file;
-
-      const isExcel = /\.(xlsx|xls)$/i.test(file.name);
-      if (isExcel) {
-        uploadFile = await excelToCsvFile(file);
-      }
-
       const fd = new FormData();
       fd.append('csrf_token', csrfToken);
-      fd.append('mode', importMode); 
-      fd.append('csv', uploadFile);
-
+      fd.append('mode', importMode);
+      // Key 'excel' matches $_FILES['excel'] in the rewritten import.php
+      // No conversion — the raw file object goes straight into the request
+      fd.append('excel', file);
+ 
       const res = await api.post('/products/import.php', fd);
       setResult(res.data);
       toast.success(`Import done: ${res.data.inserted} added, ${res.data.updated} updated`);
@@ -155,7 +169,7 @@ function ImportModal({ onClose }) {
       setLoading(false);
     }
   };
-
+ 
   return (
     <Modal
       open
@@ -173,19 +187,23 @@ function ImportModal({ onClose }) {
         </div>
       }
     >
+      {/* ── Template download + column reference ── */}
       <div className="form-group">
         <button className="btn btn-ghost btn-sm" onClick={downloadTemplate}>
-          <i className="fi fi-sr-download" /> Download Template (CSV)
+          <i className="fi fi-sr-download" /> Download Template (Excel)
         </button>
         <p className="form-hint">
-          Accepts <strong>.csv</strong> or <strong>.xlsx / .xls</strong><br />
-          Supported columns: <code>Item Name</code>, <code>Description/Size</code>, <code>Current Stock</code>,&nbsp;
-          <code>Cost Price</code>, <code>Retail Price</code>, <code>SKU</code>, <code>Category</code><br />
-          Blank rows are automatically skipped.
+          Accepts <strong>.xlsx</strong> or <strong>.xls</strong> files only.<br />
+          Supported columns: <code>Item Name</code>, <code>Description/Size</code>,{' '}
+          <code>Current Stock</code>, <code>Cost Price</code>, <code>Retail Price</code>,{' '}
+          <code>SKU</code>, <code>Category</code>, <code>Image</code><br />
+          To attach a product photo, <strong>insert a picture into the Image column cell</strong>{' '}
+          for that row in Excel (Insert → Pictures → Place in Cell).<br />
+          Missing categories are <strong>created automatically</strong>. Blank rows are skipped.
         </p>
       </div>
-
-      {/* Import mode selector */}
+ 
+      {/* ── Import mode selector ── */}
       <div className="form-group">
         <label className="form-label">Import Mode</label>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -211,47 +229,57 @@ function ImportModal({ onClose }) {
           }
         </p>
       </div>
-      
+ 
+      {/* ── File picker — only shown before a result is available ── */}
       {!result && (
         <div className="form-group">
           <label className="form-label">Select File</label>
           <input
             type="file"
-            accept=".csv,.xlsx,.xls"
+            accept=".xlsx,.xls"       /* CSV is no longer accepted */
             className="input"
-            onChange={e => { setFile(e.target.files[0]); setResult(null); setParseError(''); }}
+            onChange={e => {
+              // Reset result and error whenever a new file is chosen
+              setFile(e.target.files[0]);
+              setResult(null);
+              setParseError('');
+            }}
           />
+          {/* Confirm the selected filename — no conversion note needed anymore */}
           {file && (
             <p className="form-hint">
               Selected: <strong>{file.name}</strong>
-              {/\.(xlsx|xls)$/i.test(file.name) && ' — will be converted from Excel automatically'}
             </p>
           )}
         </div>
       )}
-
+ 
+      {/* ── Inline error (e.g. server rejected the file or a PHP exception) ── */}
       {parseError && (
         <p className="field-error">
-          <i className="fi fi-sr-triangle-warning" style={{marginRight: 6}} />
+          <i className="fi fi-sr-triangle-warning" style={{ marginRight: 6 }} />
           {parseError}
         </p>
       )}
-
+ 
+      {/* ── Import result summary ── */}
       {result && (
         <div className="import-result">
           <div className="import-result__row import-result__row--ok">
-            <i className="fi fi-sr-check-circle"></i> <strong>{result.inserted}</strong> products added  
+            <i className="fi fi-sr-check-circle" /> <strong>{result.inserted}</strong> products added
           </div>
           <div className="import-result__row import-result__row--info">
-            <i className="fi fi-sr-forward"></i> <strong>{result.updated}</strong> products updated
+            <i className="fi fi-sr-forward" /> <strong>{result.updated}</strong> products updated
           </div>
           <div className="import-result__row">
-            <i className="fi fi-sr-cross-circle"></i> <strong>{result.skipped}</strong> rows skipped
+            <i className="fi fi-sr-cross-circle" /> <strong>{result.skipped}</strong> rows skipped
           </div>
           {result.errors?.length > 0 && (
             <div className="import-errors">
-              <p className="form-label" style={{marginTop:8}}>Row errors:</p>
-              {result.errors.map((e, i) => <p key={i} className="field-error">{e}</p>)}
+              <p className="form-label" style={{ marginTop: 8 }}>Row errors:</p>
+              {result.errors.map((e, i) => (
+                <p key={i} className="field-error">{e}</p>
+              ))}
             </div>
           )}
         </div>
@@ -259,7 +287,6 @@ function ImportModal({ onClose }) {
     </Modal>
   );
 }
-
 function CategoryModal({ categories, onClose, onSaved }) {
   const [newName, setNewName] = useState('');
   const [error,   setError]   = useState('');

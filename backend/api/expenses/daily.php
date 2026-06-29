@@ -7,11 +7,10 @@ requireAdmin();
 
 $db = getDB();
 
-// ── Input parsing ────────────────────────────────────────────
 $dateFrom = $_GET['date_from'] ?? date('Y-m-01');
 $dateTo   = $_GET['date_to']   ?? date('Y-m-d');
 
-// ── Strict date validation ───────────────────────────────────
+
 $fmt    = 'Y-m-d';
 $dtFrom = DateTime::createFromFormat($fmt, $dateFrom);
 $dtTo   = DateTime::createFromFormat($fmt, $dateTo);

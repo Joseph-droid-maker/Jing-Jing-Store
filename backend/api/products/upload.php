@@ -15,7 +15,7 @@ if (empty($_FILES['image'])) {
 }
 
 $file     = $_FILES['image'];
-$maxSize  = 5 * 1024 * 1024; 
+$maxSize  = 2 * 1024 * 1024; 
 $allowed  = ['image/jpeg', 'image/png', 'image/webp'];
 $finfo    = finfo_open(FILEINFO_MIME_TYPE);
 $mimeType = finfo_file($finfo, $file['tmp_name']);
